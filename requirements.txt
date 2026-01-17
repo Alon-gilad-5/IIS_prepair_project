@@ -9,3 +9,6 @@ google-generativeai>=0.3.0
 
 # DOCX export
 python-docx>=1.1.0
+
+# HTTP requests (for interview simulator integration)
+requests>=2.31.0

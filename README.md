@@ -80,7 +80,7 @@ This module helps job seekers:
 ```
 .
 ├── app.py                      # Main Streamlit application
-├── services/                   # Core business logic modules
+├── cv_improvement_services/    # CV improvement business logic modules
 │   ├── pdf_extract.py         # PDF text extraction
 │   ├── gemini_client.py       # Gemini API client
 │   ├── cv_structurer.py       # CV structure extraction

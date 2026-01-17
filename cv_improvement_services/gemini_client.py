@@ -44,7 +44,6 @@ def call_gemini_json(prompt: str, max_retries: int = 1) -> dict:
         "response_mime_type": "application/json",
     }
     
-    # Note: Using gemini-2.5-pro
     # To use a different model (e.g., gemini-1.5-flash), change the model_name here
     model = genai.GenerativeModel(
         model_name="gemini-2.5-pro",

@@ -1,0 +1,49 @@
+.feedback-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.container {
+  max-width: 800px;
+  width: 100%;
+  background: white;
+  border-radius: 12px;
+  padding: 40px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+h1 {
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.message {
+  font-size: 1.2rem;
+  color: #666;
+  margin-bottom: 15px;
+}
+
+.session-id {
+  font-size: 0.9rem;
+  color: #999;
+  margin-bottom: 30px;
+}
+
+.placeholder-box {
+  padding: 40px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 2px dashed #ddd;
+}
+
+.placeholder-box p {
+  margin: 10px 0;
+  color: #666;
+  font-size: 1.1rem;
+}

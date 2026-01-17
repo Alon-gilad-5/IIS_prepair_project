@@ -2,12 +2,13 @@
 
 import streamlit as st
 import os
-from services.pdf_extract import extract_pdf_text
-from services.cv_structurer import structure_cv
-from services.jd_structurer import structure_jd
-from services.scoring import compute_match_score
-from services.suggestions import generate_suggestions, locate_anchor_span, apply_suggestion
-from services.docx_export import export_cv_to_docx
+import requests
+from cv_improvement_services.pdf_extract import extract_pdf_text
+from cv_improvement_services.cv_structurer import structure_cv
+from cv_improvement_services.jd_structurer import structure_jd
+from cv_improvement_services.scoring import compute_match_score
+from cv_improvement_services.suggestions import generate_suggestions, locate_anchor_span, apply_suggestion
+from cv_improvement_services.docx_export import export_cv_to_docx
 
 
 # Page config
@@ -100,7 +101,7 @@ def main():
     st.divider()
     
     # Analysis button
-    col_btn1, col_btn2, col_btn3, col_btn4 = st.columns([1, 1, 1, 1])
+    col_btn1, col_btn2, col_btn3, col_btn4, col_btn5 = st.columns([1, 1, 1, 1, 1])
     
     with col_btn1:
         analyze_clicked = st.button("🔍 Analyze", type="primary", use_container_width=True)
@@ -113,6 +114,11 @@ def main():
     
     with col_btn4:
         download_clicked = st.button("📥 Download DOCX", use_container_width=True, disabled=st.session_state.final_cv_text is None)
+    
+    with col_btn5:
+        start_interview_clicked = st.button("🎤 Start Interview", use_container_width=True, 
+                                            disabled=not (st.session_state.final_cv_text and st.session_state.jd_text),
+                                            help="Start interview simulation with your improved CV")
     
     # Handle Analyze button
     if analyze_clicked:
@@ -192,6 +198,59 @@ def main():
             )
         except Exception as e:
             st.error(f"❌ Export failed: {str(e)}")
+    
+    # Handle Start Interview button
+    if start_interview_clicked:
+        if not st.session_state.final_cv_text or not st.session_state.jd_text:
+            st.error("❌ Please save your CV version and ensure JD is provided.")
+        else:
+            # Start interview via FastAPI backend
+            backend_url = os.getenv("INTERVIEW_BACKEND_URL", "http://localhost:8000")
+            
+            try:
+                with st.spinner("Starting interview session..."):
+                    response = requests.post(
+                        f"{backend_url}/api/interview/start",
+                        json={
+                            "mode": "after_cv",
+                            "cv_text": st.session_state.final_cv_text,
+                            "jd_text": st.session_state.jd_text,
+                            "cv_version_id": f"streamlit_{st.session_state.get('session_id', 'default')}",
+                            "settings": {
+                                "num_open": 5,
+                                "num_code": 3,
+                                "duration_minutes": 30
+                            }
+                        },
+                        timeout=30
+                    )
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        session_id = data["session_id"]
+                        
+                        # Get frontend URL
+                        frontend_url = os.getenv("INTERVIEW_FRONTEND_URL", "http://localhost:5173")
+                        interview_url = f"{frontend_url}/interview/{session_id}"
+                        
+                        st.success(f"✅ Interview session created! Opening interview...")
+                        
+                        # Open in new tab via markdown link
+                        st.markdown(
+                            f'<a href="{interview_url}" target="_blank" style="display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; margin: 10px 0;">🎤 Open Interview (Session {session_id})</a>',
+                            unsafe_allow_html=True
+                        )
+                        
+                        st.session_state.interview_session_id = session_id
+                        st.session_state.interview_url = interview_url
+                    else:
+                        error_msg = response.json().get("detail", "Failed to start interview")
+                        st.error(f"❌ Interview start failed: {error_msg}")
+                        
+            except requests.exceptions.ConnectionError:
+                st.error("❌ Cannot connect to interview backend. Please ensure the FastAPI server is running on port 8000.")
+            except Exception as e:
+                st.error(f"❌ Failed to start interview: {str(e)}")
     
     # Display Analysis Results
     if st.session_state.analysis:
