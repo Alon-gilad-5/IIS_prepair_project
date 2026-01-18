@@ -1,0 +1,171 @@
+"""CV management router."""
+
+import uuid
+import json
+import hashlib
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session
+from backend.db import get_session
+from backend.models import User, CVVersion, CVAnalysisResult, JobSpec
+from backend.schemas import (
+    CVIngestRequest, CVIngestResponse,
+    CVAnalyzeRequest, CVAnalyzeResponse,
+    CVSaveRequest, CVSaveResponse
+)
+from backend.services.role_profile import extract_role_profile
+
+router = APIRouter(prefix="/api/cv", tags=["cv"])
+
+
+@router.post("/ingest", response_model=CVIngestResponse)
+def ingest_cv(
+    request: CVIngestRequest,
+    session: Session = Depends(get_session)
+):
+    """Ingest CV text and create CV version."""
+    # Ensure user exists
+    user = session.get(User, request.user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Create CV version
+    cv_version = CVVersion(
+        id=str(uuid.uuid4()),
+        user_id=request.user_id,
+        cv_text=request.cv_text,
+        source="manual"
+    )
+    session.add(cv_version)
+    session.commit()
+    session.refresh(cv_version)
+    
+    return CVIngestResponse(
+        cv_version_id=cv_version.id,
+        cv_profile_json=None  # Optional minimal profile
+    )
+
+
+@router.post("/analyze", response_model=CVAnalyzeResponse)
+def analyze_cv(
+    request: CVAnalyzeRequest,
+    session: Session = Depends(get_session)
+):
+    """Analyze CV against job spec."""
+    cv_version = session.get(CVVersion, request.cv_version_id)
+    if not cv_version:
+        raise HTTPException(status_code=404, detail="CV version not found")
+    
+    job_spec = session.get(JobSpec, request.job_spec_id)
+    if not job_spec:
+        raise HTTPException(status_code=404, detail="Job spec not found")
+    
+    # Extract role profile if not exists
+    if not job_spec.jd_profile_json:
+        role_profile = extract_role_profile(cv_version.cv_text, job_spec.jd_text)
+        job_spec.jd_profile_json = json.dumps(role_profile)
+        session.add(job_spec)
+        session.commit()
+    else:
+        role_profile = json.loads(job_spec.jd_profile_json)
+    
+    # Compute match score (simplified: based on role profile weights)
+    match_score = _compute_match_score(cv_version.cv_text, role_profile)
+    
+    # Extract strengths, gaps, suggestions (simplified for MVP)
+    strengths = _extract_strengths(cv_version.cv_text, role_profile)
+    gaps = _extract_gaps(cv_version.cv_text, role_profile)
+    suggestions = _generate_suggestions(cv_version.cv_text, role_profile, gaps)
+    focus = {
+        "must_have_topics": role_profile.get("must_have_topics", []),
+        "nice_to_have_topics": role_profile.get("nice_to_have_topics", [])
+    }
+    
+    # Save analysis result
+    analysis = CVAnalysisResult(
+        id=str(uuid.uuid4()),
+        cv_version_id=request.cv_version_id,
+        job_spec_id=request.job_spec_id,
+        user_id=request.user_id,
+        match_score=match_score,
+        strengths_json=json.dumps(strengths),
+        gaps_json=json.dumps(gaps),
+        suggestions_json=json.dumps(suggestions),
+        focus_json=json.dumps(focus)
+    )
+    session.add(analysis)
+    session.commit()
+    
+    # Compute readiness snapshot
+    from backend.services.readiness import compute_readiness_snapshot
+    compute_readiness_snapshot(session, request.user_id, request.job_spec_id, context="cv_analysis")
+    
+    return CVAnalyzeResponse(
+        match_score=match_score,
+        strengths=strengths,
+        gaps=gaps,
+        suggestions=suggestions,
+        role_focus=focus
+    )
+
+
+@router.post("/save", response_model=CVSaveResponse)
+def save_cv(
+    request: CVSaveRequest,
+    session: Session = Depends(get_session)
+):
+    """Save improved CV version."""
+    user = session.get(User, request.user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    parent_version = None
+    if request.parent_cv_version_id:
+        parent_version = session.get(CVVersion, request.parent_cv_version_id)
+    
+    # Create new CV version
+    cv_version = CVVersion(
+        id=str(uuid.uuid4()),
+        user_id=request.user_id,
+        cv_text=request.updated_cv_text,
+        source="improved",
+        parent_cv_version_id=request.parent_cv_version_id
+    )
+    session.add(cv_version)
+    session.commit()
+    session.refresh(cv_version)
+    
+    return CVSaveResponse(new_cv_version_id=cv_version.id)
+
+
+def _compute_match_score(cv_text: str, role_profile: dict) -> float:
+    """Simple match score computation."""
+    must_have = set(t.lower() for t in role_profile.get("must_have_topics", []))
+    cv_lower = cv_text.lower()
+    
+    matches = sum(1 for topic in must_have if topic in cv_lower)
+    total = len(must_have) if must_have else 1
+    
+    return min(1.0, matches / total * 0.8 + 0.2)  # 0.2-1.0 range
+
+
+def _extract_strengths(cv_text: str, role_profile: dict) -> list:
+    """Extract strengths from CV."""
+    must_have = set(t.lower() for t in role_profile.get("must_have_topics", []))
+    cv_lower = cv_text.lower()
+    
+    found = [topic for topic in must_have if topic in cv_lower]
+    return [f"Experience with {t}" for t in found[:5]]
+
+
+def _extract_gaps(cv_text: str, role_profile: dict) -> list:
+    """Extract gaps from CV."""
+    must_have = set(t.lower() for t in role_profile.get("must_have_topics", []))
+    cv_lower = cv_text.lower()
+    
+    missing = [topic for topic in must_have if topic not in cv_lower]
+    return [f"Missing: {t}" for t in missing[:5]]
+
+
+def _generate_suggestions(cv_text: str, role_profile: dict, gaps: list) -> list:
+    """Generate improvement suggestions."""
+    return [f"Consider highlighting {gap.replace('Missing: ', '')}" for gap in gaps[:3]]

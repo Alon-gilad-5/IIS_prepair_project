@@ -1,0 +1,388 @@
+openapi: 3.0.0
+info:
+  title: PrepAIr API
+  description: AI-Powered Career Preparation Platform API
+  version: 1.0.0
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+
+paths:
+  /api/users/ensure:
+    post:
+      summary: Ensure user exists
+      tags: [users]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: string
+      responses:
+        '200':
+          description: User ID
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_id:
+                    type: string
+
+  /api/cv/ingest:
+    post:
+      summary: Ingest CV text
+      tags: [cv]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, cv_text]
+              properties:
+                user_id:
+                  type: string
+                cv_text:
+                  type: string
+      responses:
+        '200':
+          description: CV version created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cv_version_id:
+                    type: string
+
+  /api/cv/analyze:
+    post:
+      summary: Analyze CV against job spec
+      tags: [cv]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, cv_version_id, job_spec_id]
+              properties:
+                user_id:
+                  type: string
+                cv_version_id:
+                  type: string
+                job_spec_id:
+                  type: string
+      responses:
+        '200':
+          description: Analysis results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  match_score:
+                    type: number
+                  strengths:
+                    type: array
+                    items:
+                      type: string
+                  gaps:
+                    type: array
+                    items:
+                      type: string
+                  suggestions:
+                    type: array
+                    items:
+                      type: string
+                  role_focus:
+                    type: object
+
+  /api/cv/save:
+    post:
+      summary: Save improved CV version
+      tags: [cv]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, updated_cv_text]
+              properties:
+                user_id:
+                  type: string
+                parent_cv_version_id:
+                  type: string
+                updated_cv_text:
+                  type: string
+      responses:
+        '200':
+          description: New CV version ID
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  new_cv_version_id:
+                    type: string
+
+  /api/jd/ingest:
+    post:
+      summary: Ingest job description
+      tags: [jd]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, jd_text]
+              properties:
+                user_id:
+                  type: string
+                jd_text:
+                  type: string
+      responses:
+        '200':
+          description: Job spec created/retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_spec_id:
+                    type: string
+                  jd_hash:
+                    type: string
+                  jd_profile_json:
+                    type: object
+
+  /api/jd/{job_spec_id}:
+    get:
+      summary: Get job spec by ID
+      tags: [jd]
+      parameters:
+        - name: job_spec_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job spec details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  jd_hash:
+                    type: string
+                  jd_text:
+                    type: string
+                  created_at:
+                    type: string
+                    format: date-time
+                  jd_profile_json:
+                    type: object
+
+  /api/interview/start:
+    post:
+      summary: Start interview session
+      tags: [interview]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, job_spec_id, mode]
+              properties:
+                user_id:
+                  type: string
+                job_spec_id:
+                  type: string
+                cv_version_id:
+                  type: string
+                mode:
+                  type: string
+                  enum: [direct, after_cv]
+                settings:
+                  type: object
+                  properties:
+                    num_open:
+                      type: integer
+                    num_code:
+                      type: integer
+                    duration_minutes:
+                      type: integer
+                    strict_mode:
+                      type: string
+      responses:
+        '200':
+          description: Interview session started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session_id:
+                    type: string
+                  plan_summary:
+                    type: object
+                  first_question:
+                    type: object
+                  total_questions:
+                    type: integer
+
+  /api/interview/next:
+    post:
+      summary: Process answer and get next question
+      tags: [interview]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [session_id, user_transcript]
+              properties:
+                session_id:
+                  type: string
+                user_transcript:
+                  type: string
+                user_code:
+                  type: string
+                is_followup:
+                  type: boolean
+                client_metrics:
+                  type: object
+      responses:
+        '200':
+          description: Interview response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  interviewer_message:
+                    type: string
+                  followup_question:
+                    type: object
+                    properties:
+                      text:
+                        type: string
+                  next_question:
+                    type: object
+                  is_done:
+                    type: boolean
+                  progress:
+                    type: object
+                    properties:
+                      turn_index:
+                        type: integer
+                      total:
+                        type: integer
+
+  /api/interview/end:
+    post:
+      summary: End interview session
+      tags: [interview]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [session_id]
+              properties:
+                session_id:
+                  type: string
+      responses:
+        '200':
+          description: Interview ended
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
+  /api/interview/session/{session_id}:
+    get:
+      summary: Get full interview session data
+      tags: [interview]
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session details with turns
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  user_id:
+                    type: string
+                  job_spec_id:
+                    type: string
+                  mode:
+                    type: string
+                  created_at:
+                    type: string
+                    format: date-time
+                  ended_at:
+                    type: string
+                    format: date-time
+                  plan_json:
+                    type: object
+                  session_summary_json:
+                    type: object
+                  turns:
+                    type: array
+                    items:
+                      type: object
+
+  /api/progress/overview:
+    get:
+      summary: Get progress overview
+      tags: [progress]
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: job_spec_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Progress overview
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  latest_snapshot:
+                    type: object
+                  trend:
+                    type: array
+                    items:
+                      type: object
+                  breakdown:
+                    type: object
