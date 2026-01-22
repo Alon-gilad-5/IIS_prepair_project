@@ -1,13 +1,13 @@
 """Pydantic schemas for API requests and responses."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 
 
 # User schemas
 class UserEnsureRequest(BaseModel):
-    user_id: Optional[str] = None
+    user_id: Optional[str] = Field(None, max_length=100)
 
 class UserEnsureResponse(BaseModel):
     user_id: str
@@ -15,8 +15,15 @@ class UserEnsureResponse(BaseModel):
 
 # CV schemas
 class CVIngestRequest(BaseModel):
-    user_id: str
-    cv_text: str
+    user_id: str = Field(..., min_length=1, max_length=100)
+    cv_text: str = Field(..., min_length=50, max_length=50000)
+    
+    @field_validator('cv_text')
+    @classmethod
+    def validate_cv_text(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError('CV text cannot be empty')
+        return v.strip()
 
 
 class CVIngestResponse(BaseModel):
@@ -68,8 +75,15 @@ class CVImproveResponse(BaseModel):
 
 # JD schemas
 class JDIngestRequest(BaseModel):
-    user_id: str
-    jd_text: str
+    user_id: str = Field(..., min_length=1, max_length=100)
+    jd_text: str = Field(..., min_length=50, max_length=50000)
+    
+    @field_validator('jd_text')
+    @classmethod
+    def validate_jd_text(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError('Job description cannot be empty')
+        return v.strip()
 
 
 class JDIngestResponse(BaseModel):
