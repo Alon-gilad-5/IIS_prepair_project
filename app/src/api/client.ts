@@ -1,22 +1,8 @@
 /** API client for PrepAIr backend. */
 
-// Backend URL - set via environment or default to localhost
-// In Vite, use VITE_BACKEND_URL env variable
-// In tests, this will be mocked or use the default
-declare const __BACKEND_URL__: string | undefined;
-
-const BACKEND_URL: string = (() => {
-  // Check for build-time injected value
-  if (typeof __BACKEND_URL__ !== 'undefined') {
-    return __BACKEND_URL__;
-  }
-  // Check for process.env (Node/Jest)
-  if (typeof process !== 'undefined' && process.env?.VITE_BACKEND_URL) {
-    return process.env.VITE_BACKEND_URL;
-  }
-  // Default
-  return 'http://localhost:8000';
-})();
+// Use relative URLs - Vite proxy handles forwarding /api to backend
+// This works in dev (via Vite proxy) and in production (same domain)
+const BACKEND_URL: string = '';
 
 async function apiRequest<T>(
   endpoint: string,
