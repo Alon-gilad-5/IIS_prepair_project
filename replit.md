@@ -25,7 +25,7 @@ PrepAIr is a full-stack application that helps job seekers optimize their CVs an
 - **Frontend**: React 18, Vite 5, TypeScript, React Router v6
 - **Backend**: FastAPI, SQLModel, SQLite, Pydantic
 - **AI**: Google Gemini 2.5 Pro (via Replit AI Integrations)
-- **UI**: Modern gradient design with toast notifications
+- **UI**: Modern dark theme with glassmorphism effects, Inter font
 
 ## Running the Application
 The workflow runs both servers:
@@ -46,14 +46,16 @@ The workflow runs both servers:
 6. Modern UI with toast notifications, error boundaries, and loading states
 
 ## Recent Changes (January 2026)
+- Complete UI redesign with modern dark theme (#0a0a0f background)
+- Glassmorphism effects with backdrop blur and glass borders
+- New accent gradient (indigo/violet: #6366f1 → #8b5cf6 → #a855f7)
+- Inter font family for modern typography
+- Smooth animations (fadeIn, slideUp, float effects)
 - Integrated Gemini AI via Replit AI Integrations (no API key needed)
-- Added toast notification system replacing all alert() calls
-- Created ErrorBoundary and LoadingSpinner components
+- Toast notification system replacing all alert() calls
+- ErrorBoundary and LoadingSpinner components
 - Enhanced CV analysis with AI-powered gap detection and suggestions
-- Added /api/cv/improve endpoint for detailed CV improvements
-- Added input validation with field length limits
-- Added global exception handlers for better error messages
-- Modern gradient UI design (purple/blue theme)
+- Input validation with field length limits
 
 ## User Preferences
 - Step-by-step approach preferred
