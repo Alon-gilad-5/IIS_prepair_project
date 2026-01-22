@@ -90,6 +90,24 @@ export const api = {
       body: JSON.stringify({ user_id: userId, updated_cv_text: updatedCvText, parent_cv_version_id: parentCvVersionId }),
     }),
 
+  getCVImprovements: (userId: string, cvVersionId: string, jobSpecId: string) =>
+    apiRequest<{
+      success: boolean;
+      improvements: {
+        improved_sections: Array<{
+          section: string;
+          original: string;
+          improved: string;
+          explanation: string;
+        }>;
+        new_content_suggestions: string[];
+        formatting_tips: string[];
+      };
+    }>('/api/cv/improve', {
+      method: 'POST',
+      body: JSON.stringify({ user_id: userId, cv_version_id: cvVersionId, job_spec_id: jobSpecId }),
+    }),
+
   // JD
   ingestJD: (userId: string, jdText: string) =>
     apiRequest<{ job_spec_id: string; jd_hash: string; jd_profile_json?: any }>('/api/jd/ingest', {

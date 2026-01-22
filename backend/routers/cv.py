@@ -11,9 +11,11 @@ from backend.models import User, CVVersion, CVAnalysisResult, JobSpec
 from backend.schemas import (
     CVIngestRequest, CVIngestResponse,
     CVAnalyzeRequest, CVAnalyzeResponse,
-    CVSaveRequest, CVSaveResponse
+    CVSaveRequest, CVSaveResponse,
+    CVImproveResponse, CVImprovements
 )
 from backend.services.role_profile import extract_role_profile
+from backend.services.cv_analyzer import analyze_cv_with_ai, generate_cv_improvements
 
 router = APIRouter(prefix="/api/cv", tags=["cv"])
 
@@ -115,13 +117,20 @@ def analyze_cv(
     else:
         role_profile = json.loads(job_spec.jd_profile_json)
     
-    # Compute match score (simplified: based on role profile weights)
-    match_score = _compute_match_score(cv_version.cv_text, role_profile)
+    # Use AI-powered analysis for comprehensive feedback
+    try:
+        ai_analysis = analyze_cv_with_ai(cv_version.cv_text, job_spec.jd_text, role_profile)
+        match_score = ai_analysis.get("match_score", 0.5)
+        strengths = ai_analysis.get("strengths", [])
+        gaps = ai_analysis.get("gaps", [])
+        suggestions = ai_analysis.get("suggestions", [])
+    except Exception as e:
+        # Fallback to heuristic analysis
+        match_score = _compute_match_score(cv_version.cv_text, role_profile)
+        strengths = _extract_strengths(cv_version.cv_text, role_profile)
+        gaps = _extract_gaps(cv_version.cv_text, role_profile)
+        suggestions = _generate_suggestions(cv_version.cv_text, role_profile, gaps)
     
-    # Extract strengths, gaps, suggestions (simplified for MVP)
-    strengths = _extract_strengths(cv_version.cv_text, role_profile)
-    gaps = _extract_gaps(cv_version.cv_text, role_profile)
-    suggestions = _generate_suggestions(cv_version.cv_text, role_profile, gaps)
     focus = {
         "must_have_topics": role_profile.get("must_have_topics", []),
         "nice_to_have_topics": role_profile.get("nice_to_have_topics", [])
@@ -182,6 +191,54 @@ def save_cv(
     session.refresh(cv_version)
     
     return CVSaveResponse(new_cv_version_id=cv_version.id)
+
+
+@router.post("/improve", response_model=CVImproveResponse)
+def get_cv_improvements(
+    request: CVAnalyzeRequest,
+    session: Session = Depends(get_session)
+):
+    """Get AI-powered CV improvement suggestions."""
+    cv_version = session.get(CVVersion, request.cv_version_id)
+    if not cv_version:
+        raise HTTPException(status_code=404, detail="CV version not found")
+    
+    job_spec = session.get(JobSpec, request.job_spec_id)
+    if not job_spec:
+        raise HTTPException(status_code=404, detail="Job spec not found")
+    
+    try:
+        role_profile = json.loads(job_spec.jd_profile_json) if job_spec.jd_profile_json else {}
+        
+        gaps = _extract_gaps(cv_version.cv_text, role_profile)
+        gap_topics = [g.replace("Missing: ", "") for g in gaps]
+        
+        improvements = generate_cv_improvements(
+            cv_version.cv_text,
+            job_spec.jd_text,
+            gap_topics
+        )
+        
+        return CVImproveResponse(
+            success=True,
+            improvements=CVImprovements(**improvements)
+        )
+    except Exception as e:
+        return CVImproveResponse(
+            success=False,
+            improvements=CVImprovements(
+                improved_sections=[],
+                new_content_suggestions=[
+                    "Highlight your most relevant experience for this role",
+                    "Add quantifiable achievements to strengthen your CV",
+                    "Include keywords from the job description"
+                ],
+                formatting_tips=[
+                    "Use consistent formatting throughout",
+                    "Keep bullet points concise and action-oriented"
+                ]
+            )
+        )
 
 
 def _compute_match_score(cv_text: str, role_profile: dict) -> float:

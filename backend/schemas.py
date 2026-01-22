@@ -48,6 +48,24 @@ class CVSaveResponse(BaseModel):
     new_cv_version_id: str
 
 
+class CVImprovedSection(BaseModel):
+    section: str
+    original: str
+    improved: str
+    explanation: str
+
+
+class CVImprovements(BaseModel):
+    improved_sections: List[CVImprovedSection] = []
+    new_content_suggestions: List[str] = []
+    formatting_tips: List[str] = []
+
+
+class CVImproveResponse(BaseModel):
+    success: bool
+    improvements: CVImprovements
+
+
 # JD schemas
 class JDIngestRequest(BaseModel):
     user_id: str
