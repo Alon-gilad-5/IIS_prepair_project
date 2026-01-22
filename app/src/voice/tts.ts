@@ -1,17 +1,28 @@
-/** Text-to-speech using Web Speech API. */
+/** Text-to-speech using Web Speech API with event callbacks. */
 
 let speechQueue: string[] = [];
-let isSpeaking = false;
+let isSpeakingInternal = false;
+let onSpeakingChangeCallback: ((speaking: boolean) => void) | null = null;
+
+function notifySpeakingChange(speaking: boolean) {
+  isSpeakingInternal = speaking;
+  if (onSpeakingChangeCallback) {
+    onSpeakingChangeCallback(speaking);
+  }
+}
 
 function processQueue() {
-  if (isSpeaking || speechQueue.length === 0) {
+  if (isSpeakingInternal || speechQueue.length === 0) {
+    if (speechQueue.length === 0 && !isSpeakingInternal) {
+      notifySpeakingChange(false);
+    }
     return;
   }
 
   const text = speechQueue.shift();
   if (!text) return;
 
-  isSpeaking = true;
+  notifySpeakingChange(true);
 
   if ('speechSynthesis' in window) {
     const utterance = new SpeechSynthesisUtterance(text);
@@ -20,34 +31,33 @@ function processQueue() {
     utterance.pitch = 1.0;
     
     utterance.onend = () => {
-      isSpeaking = false;
-      // Process next item in queue after a brief pause
+      isSpeakingInternal = false;
       setTimeout(() => {
         processQueue();
       }, 300);
     };
 
     utterance.onerror = () => {
-      isSpeaking = false;
+      isSpeakingInternal = false;
       processQueue();
     };
 
     window.speechSynthesis.speak(utterance);
   } else {
     console.warn('Speech synthesis not supported');
-    isSpeaking = false;
+    isSpeakingInternal = false;
     processQueue();
   }
 }
 
 export function speak(text: string): void {
   if (!text || text.trim() === '') return;
-  
   speechQueue.push(text);
   processQueue();
 }
 
 export function speakSequential(texts: string[]): void {
+  if (texts.length === 0) return;
   speechQueue.push(...texts);
   processQueue();
 }
@@ -57,5 +67,21 @@ export function stopSpeaking(): void {
     window.speechSynthesis.cancel();
   }
   speechQueue = [];
-  isSpeaking = false;
+  isSpeakingInternal = false;
+  notifySpeakingChange(false);
+}
+
+export function onSpeakingChange(callback: (speaking: boolean) => void): () => void {
+  onSpeakingChangeCallback = callback;
+  return () => {
+    onSpeakingChangeCallback = null;
+  };
+}
+
+export function isSpeaking(): boolean {
+  return isSpeakingInternal || speechQueue.length > 0;
+}
+
+export function isSupported(): boolean {
+  return 'speechSynthesis' in window;
 }
