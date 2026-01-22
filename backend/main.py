@@ -17,11 +17,11 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS middleware (allow app dev origin)
+# CORS middleware (allow all origins for Replit environment)
 # IMPORTANT: CORS middleware must be added BEFORE routers
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",  # Allow localhost on any port
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
