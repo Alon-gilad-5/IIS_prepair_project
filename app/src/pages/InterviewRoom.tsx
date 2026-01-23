@@ -120,34 +120,70 @@ function InterviewRoom() {
     if (storedFirstQuestion) {
       try {
         const firstQuestion = JSON.parse(storedFirstQuestion);
-        setCurrentQuestion(firstQuestion);
-        
-        const total = storedTotalQuestions ? parseInt(storedTotalQuestions, 10) : 0;
-        setProgress({ turn_index: 0, total });
-
-        addMessage('interviewer', "Welcome! Let's begin the interview. I'll be asking you questions based on your profile. Take your time to respond thoughtfully.");
-        
-        safeSetTimeout(() => {
-          addMessage('interviewer', firstQuestion.text);
-          if (voiceOn && ttsSupported()) {
-            speakSequential([
-              "Welcome! Let's begin the interview.",
-              firstQuestion.text
-            ]);
-          }
-        }, 500);
-
+        startInterviewWithQuestion(firstQuestion, storedTotalQuestions ? parseInt(storedTotalQuestions, 10) : 0);
         localStorage.removeItem('firstQuestion');
         localStorage.removeItem('totalQuestions');
       } catch (error) {
         console.error('Failed to load first question:', error);
-        showToast('Failed to load interview question', 'error');
+        await fetchSessionFromAPI();
       }
     } else {
-      addMessage('interviewer', "Welcome! The interview session is ready. Please ensure you've completed the document setup first.");
-      showToast('Please start from the document setup page', 'warning');
+      await fetchSessionFromAPI();
+    }
+  };
+
+  const fetchSessionFromAPI = async () => {
+    if (!sessionId) return;
+    
+    try {
+      const session = await api.getSession(sessionId);
+      if (session && session.plan_json) {
+        const plan = session.plan_json;
+        const questions = plan.questions || [];
+        const totalQuestions = questions.length;
+        const currentTurnIndex = session.turns?.length || 0;
+        
+        if (currentTurnIndex < totalQuestions) {
+          const currentQuestion = questions[currentTurnIndex];
+          setProgress({ turn_index: currentTurnIndex, total: totalQuestions });
+          startInterviewWithQuestion(currentQuestion, totalQuestions, currentTurnIndex > 0);
+        } else {
+          addMessage('interviewer', "This interview session has already been completed.");
+          showToast('Interview already completed', 'info');
+          safeSetTimeout(() => navigate(`/done/${sessionId}`), 2000);
+        }
+      } else {
+        addMessage('interviewer', "Welcome! Please start from the home page to begin your interview session.");
+        showToast('Please start from the home page', 'warning');
+        safeSetTimeout(() => navigate('/'), 3000);
+      }
+    } catch (error) {
+      console.error('Failed to fetch session:', error);
+      addMessage('interviewer', "I couldn't load your interview session. Please start a new session from the home page.");
+      showToast('Session not found. Please start again.', 'error');
       safeSetTimeout(() => navigate('/'), 3000);
     }
+  };
+
+  const startInterviewWithQuestion = (question: any, total: number, isResume: boolean = false) => {
+    setCurrentQuestion(question);
+    setProgress((prev) => ({ ...prev, total }));
+
+    const welcomeMsg = isResume 
+      ? "Welcome back! Let's continue your interview."
+      : "Welcome! Let's begin the interview. I'll be asking you questions based on your profile. Take your time to respond thoughtfully.";
+    
+    addMessage('interviewer', welcomeMsg);
+    
+    safeSetTimeout(() => {
+      addMessage('interviewer', question.text);
+      if (voiceOn && ttsSupported()) {
+        speakSequential([
+          isResume ? "Welcome back! Let's continue." : "Welcome! Let's begin the interview.",
+          question.text
+        ]);
+      }
+    }, 500);
   };
 
   const handleStartRecording = () => {
