@@ -46,6 +46,12 @@ The workflow runs both servers:
 6. Modern UI with toast notifications, error boundaries, and loading states
 
 ## Recent Changes (January 2026)
+- **Voice Conversation Interview**: Redesigned interview as a chat-style voice conversation
+  - AI interviewer speaks questions aloud using Text-to-Speech (Web Speech API)
+  - User responds verbally via Speech-to-Text (browser native, no API key needed)
+  - Real-time transcript display during recording
+  - Voice controls: mute/unmute, repeat last message, recording indicator
+  - Questions still sourced from 2,487-question database/RAG system
 - Complete UI redesign with modern dark theme (#0a0a0f background)
 - Glassmorphism effects with backdrop blur and glass borders
 - New accent gradient (indigo/violet: #6366f1 → #8b5cf6 → #a855f7)
