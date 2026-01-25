@@ -17,13 +17,15 @@ def analyze_cv_with_ai(cv_text: str, jd_text: str, role_profile: Dict[str, Any])
             "suggestions": List[str]
         }
     """
-    system_prompt = """You are an expert career coach and CV analyst. Analyze CVs objectively and provide actionable feedback.
+    system_prompt = """You are a senior technical recruiter and CV optimization expert with 15+ years of experience.
+You understand ATS (Applicant Tracking Systems), hiring manager psychology, and what makes candidates stand out.
+Analyze CVs with depth and provide genuinely useful, specific feedback that goes beyond surface-level observations.
 Always respond with valid JSON only."""
-    
+
     must_have = role_profile.get("must_have_topics", [])
     nice_to_have = role_profile.get("nice_to_have_topics", [])
-    
-    user_prompt = f"""Analyze this CV against the job description:
+
+    user_prompt = f"""Perform a deep analysis of this CV against the job description. Think like a hiring manager who sees hundreds of applications.
 
 CV:
 {cv_text[:4000]}
@@ -38,26 +40,34 @@ Return a JSON object with this structure:
 {{
     "match_score": 0.75,
     "strengths": [
-        "Strong Python experience demonstrated through multiple projects",
-        "Leadership experience managing cross-functional teams"
+        "Your GNN project demonstrates exactly the kind of ML engineering the role requires - you should lead with this. The F1 score of 87.1% is a concrete achievement that proves competence.",
+        "Python proficiency is evident through multiple academic projects - this satisfies the core technical requirement",
+        "Cross-functional teamwork shown in the 3-person team project aligns with the collaborative culture mentioned in the JD"
     ],
     "gaps": [
-        "No mention of cloud infrastructure experience (AWS/GCP)",
-        "Limited evidence of API design skills"
+        "No Docker/containerization experience mentioned (critical): The JD lists this as required. Even basic Docker knowledge would help - consider adding any exposure you have",
+        "Missing cloud platform experience (AWS/GCP/Azure): Modern ML roles almost always involve cloud deployment. This gap may cause immediate rejection by ATS",
+        "No production/deployment experience visible: Academic projects are valuable, but the JD hints at wanting someone who can ship code to real users"
     ],
     "suggestions": [
-        "Add specific metrics to your project achievements (e.g., 'reduced load time by 40%')",
-        "Include any cloud platform experience, even personal projects"
+        "URGENT - Address Docker gap: Add a weekend project using Docker. Even 'Containerized Flask ML API using Docker for local development' shows initiative. The JD explicitly requires this.",
+        "Quantify your GNN project impact more specifically: Instead of 'outperforming standard baselines', write 'Achieved 23% improvement over baseline LSTM model in defender position prediction, reducing prediction error from X to Y meters'. Numbers stick in recruiters' minds.",
+        "Add a 'Technical Skills' section formatted for ATS: List skills in a single line like 'Python, TensorFlow, PyTorch, scikit-learn, pandas, Git' - ATS systems scan for exact keyword matches.",
+        "Your 'Profile' section is too generic. Rewrite it to mirror JD language: 'Data Science student specializing in deep learning and computer vision, seeking to apply ML engineering skills in a fast-paced production environment' directly echoes what they're looking for."
     ]
 }}
 
-Rules:
-- match_score: 0.0-1.0 based on overall fit
-- strengths: 3-5 specific strengths with evidence from CV
-- gaps: 3-5 skills/experiences missing or weak
-- suggestions: 3-5 actionable improvements
-- Be specific and reference actual content from the CV
-- Return ONLY valid JSON"""
+CRITICAL RULES:
+- match_score: Calculate based on must-have coverage (70% weight) + nice-to-have (30% weight)
+- strengths: 3-5 items. Each must reference SPECIFIC content from the CV and explain WHY it matters for THIS job. No generic statements like "Experience with Python".
+- gaps: 3-5 items. Prioritize by severity. Explain the CONSEQUENCE of each gap (ATS rejection, interview weakness, etc.)
+- suggestions: 3-5 items. Each suggestion must be:
+  1. Specific to THIS CV (reference actual content to change)
+  2. Actionable (tell them exactly what to write/add)
+  3. Connected to the JD (explain which requirement it addresses)
+  4. Include a concrete example or rewrite when possible
+- AVOID generic advice like "add more keywords" or "quantify achievements" without specific examples
+- Return ONLY valid JSON, no markdown formatting"""
 
     try:
         response_text = call_gemini(system_prompt, user_prompt)

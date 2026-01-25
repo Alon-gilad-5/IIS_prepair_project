@@ -4,6 +4,16 @@
 // This works in dev (via Vite proxy) and in production (same domain)
 const BACKEND_URL: string = '';
 
+/** Interview settings passed to startInterview */
+export interface InterviewSettings {
+  num_open?: number;
+  num_code?: number;
+  duration_minutes?: number;
+  persona?: 'friendly' | 'formal' | 'challenging';
+  question_style?: number; // 0 = professional, 100 = personal
+  language?: 'english' | 'hebrew';
+}
+
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
@@ -121,7 +131,7 @@ export const api = {
   },
 
   // Interview
-  startInterview: (userId: string, jobSpecId: string, cvVersionId: string | null, mode: string, settings?: any) =>
+  startInterview: (userId: string, jobSpecId: string, cvVersionId: string | null, mode: string, settings?: InterviewSettings) =>
     apiRequest<{
       session_id: string;
       plan_summary: any;
@@ -134,11 +144,11 @@ export const api = {
         job_spec_id: jobSpecId,
         cv_version_id: cvVersionId,
         mode,
-        settings: settings || { num_open: 4, num_code: 2, duration_minutes: 12 },
+        settings: settings || { num_open: 4, num_code: 2, duration_minutes: 12, persona: 'friendly' },
       }),
     }),
 
-  nextInterview: (sessionId: string, userTranscript: string, userCode?: string, isFollowup?: boolean) =>
+  nextInterview: (sessionId: string, userTranscript: string, userCode?: string, isFollowup?: boolean, elapsedSeconds?: number) =>
     apiRequest<{
       interviewer_message: string;
       followup_question?: { text: string };
@@ -152,7 +162,20 @@ export const api = {
         user_transcript: userTranscript,
         user_code: userCode,
         is_followup: isFollowup,
+        elapsed_seconds: elapsedSeconds,
       }),
+    }),
+    
+  skipToCode: (sessionId: string) =>
+    apiRequest<{
+      interviewer_message: string;
+      followup_question?: { text: string };
+      next_question?: any;
+      is_done: boolean;
+      progress: { turn_index: number; total: number };
+    }>('/api/interview/skip-to-code', {
+      method: 'POST',
+      body: JSON.stringify({ session_id: sessionId }),
     }),
 
   endInterview: (sessionId: string) =>

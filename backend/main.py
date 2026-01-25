@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 from backend.db import init_db
-from backend.routers import users, cv, jd, interview, progress
+from backend.routers import users, cv, jd, interview, progress, tts
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -37,6 +37,7 @@ app.include_router(cv.router)
 app.include_router(jd.router)
 app.include_router(interview.router)
 app.include_router(progress.router)
+app.include_router(tts.router)
 
 
 @app.on_event("startup")

@@ -105,29 +105,18 @@ function DocumentSetup() {
         jdResult = await api.ingestJD(userId, jdText);
       }
 
-      setLoadingMessage('Preparing interview questions...');
-      const sessionResult = await api.startInterview(
-        userId,
-        jdResult.job_spec_id,
-        cvResult.cv_version_id,
-        'direct',
-        { num_open: 4, num_code: 2, duration_minutes: 12 }
-      );
-
-      if (sessionResult.first_question) {
-        localStorage.setItem('firstQuestion', JSON.stringify(sessionResult.first_question));
-      }
-      if (sessionResult.plan_summary) {
-        localStorage.setItem('planSummary', JSON.stringify(sessionResult.plan_summary));
-      }
-      if (sessionResult.total_questions) {
-        localStorage.setItem('totalQuestions', sessionResult.total_questions.toString());
+      // Store IDs for interview settings page
+      localStorage.setItem('cvVersionId', cvResult.cv_version_id);
+      localStorage.setItem('jobSpecId', jdResult.job_spec_id);
+      if (cvInputMode === 'text') {
+        localStorage.setItem('cvText', cvText);
       }
 
-      showToast('Interview ready! Good luck!', 'success');
-      navigate(`/pre-interview?sessionId=${sessionResult.session_id}`);
+      showToast('Documents uploaded! Choose your interview style.', 'success');
+      // Navigate to interview settings to choose persona
+      navigate('/interview/settings');
     } catch (error: any) {
-      showToast(error.message || 'Failed to start interview. Please try again.', 'error');
+      showToast(error.message || 'Failed to upload documents. Please try again.', 'error');
     } finally {
       setLoading(false);
       setLoadingMessage('');

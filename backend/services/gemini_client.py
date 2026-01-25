@@ -3,9 +3,13 @@
 import os
 from typing import Optional
 
+from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception
+
+# Load environment variables from .env for local/dev runs
+load_dotenv()
 
 # Check for Replit AI Integrations first (for Replit environment)
 AI_INTEGRATIONS_GEMINI_API_KEY = os.environ.get("AI_INTEGRATIONS_GEMINI_API_KEY")
@@ -33,6 +37,11 @@ if API_KEY:
     else:
         # Regular API key mode (local development)
         client = genai.Client(api_key=API_KEY)
+
+
+def get_gemini_api_key() -> Optional[str]:
+    """Return the configured Gemini API key (if any)."""
+    return API_KEY
 
 
 def is_rate_limit_error(exception: BaseException) -> bool:
@@ -76,7 +85,7 @@ def call_gemini(system_prompt: str, user_prompt: str, timeout: int = 30) -> str:
         full_prompt = f"{system_prompt}\n\nUser Request:\n{user_prompt}"
         
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-1.5-flash-002",
             contents=full_prompt,
             config=types.GenerateContentConfig(
                 max_output_tokens=8192,
@@ -100,7 +109,7 @@ def generate_text(prompt: str) -> str:
     
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-1.5-flash-002",
             contents=prompt
         )
         return response.text or ""

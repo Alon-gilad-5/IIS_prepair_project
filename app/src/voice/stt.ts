@@ -13,6 +13,12 @@ if ('webkitSpeechRecognition' in window) {
   recognition.lang = 'en-US';
 }
 
+export function setRecognitionLanguage(lang: 'english' | 'hebrew') {
+  if (recognition) {
+    recognition.lang = lang === 'hebrew' ? 'he-IL' : 'en-US';
+  }
+}
+
 export function startRecognition(
   onTranscript: RecognitionCallback,
   onError?: ErrorCallback

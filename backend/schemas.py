@@ -102,17 +102,23 @@ class JDGetResponse(BaseModel):
 
 
 # Interview schemas
+class InterviewSettings(BaseModel):
+    """Interview configuration settings."""
+    num_open: int = 4
+    num_code: int = 2
+    duration_minutes: int = 12
+    strict_mode: str = "realistic"
+    persona: str = "friendly"  # "friendly", "formal", "challenging"
+    question_style: int = 50  # 0 = professional/technical, 100 = personal/behavioral
+    language: str = "english"  # "english" or "hebrew"
+
+
 class InterviewStartRequest(BaseModel):
     user_id: str
     job_spec_id: str
     cv_version_id: Optional[str] = None
     mode: str = "direct"  # "direct" | "after_cv"
-    settings: Dict[str, Any] = Field(default_factory=lambda: {
-        "num_open": 4,
-        "num_code": 2,
-        "duration_minutes": 12,
-        "strict_mode": "realistic"
-    })
+    settings: InterviewSettings = Field(default_factory=InterviewSettings)
 
 
 class InterviewStartResponse(BaseModel):
@@ -127,6 +133,7 @@ class InterviewNextRequest(BaseModel):
     user_transcript: str
     user_code: Optional[str] = None
     is_followup: bool = False
+    elapsed_seconds: Optional[int] = None
     client_metrics: Optional[Dict[str, Any]] = None
 
 
@@ -136,6 +143,10 @@ class InterviewNextResponse(BaseModel):
     next_question: Optional[Dict[str, Any]] = None
     is_done: bool
     progress: Dict[str, int]
+    # Agent-specific fields (optional, for debugging and transparency)
+    agent_decision: Optional[str] = None  # "followup", "advance", "hint", "end"
+    agent_confidence: Optional[float] = None  # 0.0-1.0 satisfaction score
+    agent_reasoning: Optional[Dict[str, Any]] = None  # Full reasoning trace (if debug=true)
 
 
 class InterviewEndRequest(BaseModel):
@@ -144,6 +155,10 @@ class InterviewEndRequest(BaseModel):
 
 class InterviewEndResponse(BaseModel):
     ok: bool
+
+
+class InterviewSkipToCodeRequest(BaseModel):
+    session_id: str
 
 
 # Progress schemas
